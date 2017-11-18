@@ -1,0 +1,119 @@
+<link rel="import" href="../polymer/lib/utils/mixin.html">
+<link rel="import" href="../app-route/app-route.html">
+
+<script>
+(function() {
+  'use strict';
+
+  /**
+   * Element class mixin that provides Route Page management
+   *
+   * @mixinFunction
+   * @polymer
+   * @memberof window
+   * @summary Element class mixin that provides Route Page management
+	 * @demo demo
+   */
+  window.AppRouteMixin = Polymer.dedupingMixin(superClass => {
+
+    /**
+     * @polymer
+     * @mixinClass
+     * @implements {window_AppRouteMixin}
+     */
+    class AppRouteMixin extends superClass {
+      static get properties() {
+        return {
+          active: {
+            type: Boolean,
+            observer: '_activeChanged'
+          },
+          route: Object,
+          routeActive: {
+            type: Boolean
+          },
+          rootPattern: String,
+          routePattern: String,
+          routeData: Object,
+          subroute: String,
+          page: {
+            type: String,
+            observer: 'pageChanged'
+          }
+        }
+      }
+
+      static get observers() {
+        return [
+          '_routeDataPageChanged(routeData.page, active)',
+        ];
+      }
+
+      static finalize() {
+        if (this.template) {
+          let router = document.createElement('app-route');
+          router.setAttribute('active', '{{routeActive}}');
+          router.setAttribute('route', '{{route}}');
+          router.setAttribute('pattern', '[[routePattern]]');
+          router.setAttribute('data', '{{routeData}}');
+          router.setAttribute('tail', '{{subroute}}');
+          this.template.content.prepend(router);
+        }
+        super.finalize();
+      }
+
+      constructor() {
+        super();
+
+        // Get root pattern for app-route, for more info about `rootPath` see:
+        // https://www.polymer-project.org/2.0/docs/upgrade#urls-in-templates
+        this.rootPattern = (new URL(this.rootPath)).pathname;
+        this.routePattern = this.rootPattern + ':page';
+      }
+
+      pageChanged(page) {
+        if (this.active) {
+          this.set('routeData.page', page);
+        }
+      }
+
+      getLinkTo(page, route) {
+        return (this.rootPattern + route.prefix + page + '/').replace('\/\/', '/');
+      }
+
+      _activeChanged(active) {
+        if (active) {
+          if(this.route && !this._prefix) {
+            this._prefix = this.route.prefix;
+          }
+          if (this.page) {
+            this.pageChanged(this.page);
+          }
+        }
+      }
+
+      _routeDataPageChanged(page, active) {
+        // Polymer 2.0 will call with `undefined` on initialization.
+        // Ignore until we are properly called with a string.
+        if (page === undefined || active === undefined) {
+          return;
+        }
+        // Force finish with slash.
+        if (this.route && this.route.path.substr(this.route.path.length - 1) !== '/') {
+          this.set('route.path', this.route.path + '/');
+          return;
+        }
+
+        if (active && this.route && this._prefix === this.route.prefix) {
+          // If no page was found in the route data, page will be an empty string.
+          // Deault to 'view1' in that case.
+          this.set('routeData.page', page);
+          this.set('page', this.routeData.page);
+        }
+      }
+
+    }
+    return AppRouteMixin;
+  });
+})();
+</script>
